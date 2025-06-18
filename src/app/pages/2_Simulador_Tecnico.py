@@ -1,0 +1,118 @@
+import streamlit as st
+import yfinance as yf
+import pandas as pd
+import matplotlib.pyplot as plt
+from datetime import datetime
+
+st.set_page_config(page_title="Simulador Técnico", layout="wide")
+st.title("Simulador - Investidor Técnico (Médias Móveis)")
+
+st.markdown("""
+Esta simulação utiliza a estratégia de cruzamento de médias móveis:
+- Compra quando a média móvel curta (20 dias) cruza acima da média longa (50 dias)
+- Venda quando a média curta cruza abaixo da média longa
+
+Você pode escolher o ativo e o período da simulação.
+""")
+
+# Entradas do usuário
+ticker = st.text_input("Ticker da Ação (ex: PETR4.SA, VALE3.SA, AAPL)", value="PETR4.SA")
+
+# Lista de périodo predefinidas
+opcao = ['6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']
+legenda = ['6 meses', '2 anos', '5 anos', '10 anos', 'máximo']
+opcoes_dic = dict(zip(legenda, opcao))
+
+# Criando o select_slider
+periodo = st.select_slider(
+    'Selecione o período, dos últimos:',
+    options=opcoes_dic.keys(),
+    value='2 anos' # Valor Inicial
+)
+
+capital_inicial = st.number_input("Capital Inicial", min_value=500, value=500, step=500)
+
+# Função para aplicar estratégia
+def estrategia_cruzamento(df):
+    df['MM20'] = df['Close'].rolling(window=20).mean()
+    df['MM50'] = df['Close'].rolling(window=50).mean()
+    df.dropna(inplace=True)
+    
+    comprado = False
+    capital = capital_inicial
+    qtd_acoes = 0
+    historico = []
+
+    for i in range(1, len(df)):
+        if not comprado and df['MM20'].iloc[i] > df['MM50'].iloc[i] and df['MM20'].iloc[i-1] <= df['MM50'].iloc[i-1]:
+            preco = df['Close'].iloc[i]
+            qtd_acoes = capital // preco
+            capital -= qtd_acoes * preco
+            historico.append((df.index[i], "Compra", preco, qtd_acoes, capital))
+            comprado = True
+        elif comprado and df['MM20'].iloc[i] < df['MM50'].iloc[i] and df['MM20'].iloc[i-1] >= df['MM50'].iloc[i-1]:
+            preco = df['Close'].iloc[i]
+            capital += qtd_acoes * preco
+            historico.append((df.index[i], "Venda", preco, qtd_acoes, capital))
+            qtd_acoes = 0
+            comprado = False
+
+    if comprado:
+        preco = df['Close'].iloc[-1]
+        capital += qtd_acoes * preco
+        historico.append((df.index[-1], "Venda Final", preco, qtd_acoes, capital))
+
+    return df, historico, capital
+
+# Simulação
+if st.button("Simular Estratégia"):
+    with st.spinner("Carregando dados e executando simulação..."):
+        try:
+            dados = yf.Ticker(ticker) 
+
+             # Informações Gerais
+            info = dados.get_info()
+
+            st.write('**Nome da Empresa:**', info.get('longName', 'N/A'))
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.write('**Setor:**', info.get('sector', 'N/A'))
+            with col2:
+                st.write('**Site:**', info.get('website', 'N/A'))
+            with col3:
+                #Preço atual
+                historico = dados.history('1d')
+                preco = historico['Close'].iloc[-1]
+                moeda = dados.get_info()['currency']   
+                st.write('**Cotação Atual ({}):** {}'.format(moeda, round(preco, 2)))
+
+            df_dados_historicos = dados.history(opcoes_dic[periodo])
+            df, operacoes, capital_final = estrategia_cruzamento(df_dados_historicos)
+
+            st.metric("Capital Final", '{} {:,.2f}'.format(moeda, capital_final))
+
+            # Geração de gráfico
+            fig, ax = plt.subplots(figsize=(12, 5))
+            ax.plot(df.index, df['Close'], label='Preço')
+            ax.plot(df.index, df['MM20'], label='MM20', linestyle='--')
+            ax.plot(df.index, df['MM50'], label='MM50', linestyle=':')
+            ax.set_title(f"{ticker} - Estratégia Técnica (MM20 x MM50)")
+            ax.legend()
+            ax.grid(True)
+            st.pyplot(fig)
+
+            # Resultados
+            st.subheader("Histórico de Operações")
+           
+            # Formatar a data como "dd/mm/aaaa"
+            operacoes = [
+                (op[0].strftime('%d/%m/%Y'), *op[1:]) for op in operacoes
+            ]
+            df_op = pd.DataFrame(operacoes, columns=["Data", "Operação", "Preço ({})".format(moeda), 
+                                                     "Qtd Ações", "Capital Atual ({})".format(moeda)])
+            st.dataframe(df_op)
+
+        except Exception as e:
+            st.error(f"Erro ao executar simulação: {e}")
+else:
+    st.info("Preencha os parâmetros e clique em 'Simular Estratégia' para ver os resultados.")
