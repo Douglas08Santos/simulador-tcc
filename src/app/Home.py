@@ -54,7 +54,7 @@ if ticker:
             preco = historico['Close'].iloc[-1]
             moeda = dados.get_info()['currency']   
 
-            st.write('**Preço Atual ({}):** {}'.format(moeda, round(preco, 2)))         
+            st.write('**Cotação Atual ({}):** {}'.format(moeda, round(preco, 2)))         
         
         # Earnings
         try:
@@ -66,10 +66,9 @@ if ticker:
         except:
             st.warning('Não foi possivel obter o calendário de earnings')
 
-
-        st.subheader('Últimos Valores da {}'.format(ticker))
+        st.subheader('Últimas Cotações da {} em'.format(ticker))
         
-        # Lista de opções predefinidas
+        # Lista de périodo predefinidas
         opcao = ['1d', '5d', '1mo', '3mo', '6mo', '1y',
                     '2y', '5y', '10y', 'ytd', 'max']
         legenda = ['1 dia', '5 dias', '1 mês', '3 meses', '6 meses',
@@ -81,9 +80,12 @@ if ticker:
             'Selecione o período',
             options=opcoes_dic.keys(),
             value='5 dias' # Valor Inicial
-        )       
+        )
+
+        #Obtendo dados historicos das cotações       
         df_dados_historicos = dados.history(opcoes_dic[periodo])
-        df_dados_historicos.index.names = ['Data']
+        df_dados_historicos.index.names = ['Data'] # Renomeando 'Date' por 'Data'
+        # Formatando data para dd/mm/yyyy
         df_dados_historicos.index = df_dados_historicos.index.strftime('%d/%m/%Y')
         df_dados_historicos = df_dados_historicos.rename(columns={
             'Open': 'Abertura',
@@ -92,17 +94,19 @@ if ticker:
             'Close': 'Fechamento'
         })
 
+        #Impressão do Dataframe
         st.dataframe(df_dados_historicos[
             ['Abertura', 'Alta', 'Baixa', 'Fechamento']
         ])
 
-        # Gráfico
-        fig, ax = plt.subplots()
+        # Geração do gráfico do preço das ações
+        fig, ax = plt.subplots(figsize=(10, 6))
         ax.plot(df_dados_historicos.index, df_dados_historicos[['Fechamento']], label="Saldo Acumulado", color='green')
-        ax.set_title("Evolução do Valor das Ações")
+        ax.set_title("Evolução das Cotações")
         ax.set_ylabel("Valor ({})".format(moeda))
         ax.grid(True)
-        plt.gca().set_xticks([])
+        plt.xticks(rotation=270)
+        #plt.gca().set_xticks([])
         st.pyplot(fig)
 
     except Exception as e:
