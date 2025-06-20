@@ -79,19 +79,8 @@ def protective_put(df, aporte_mensal, moeda):
     df = df.iloc[:-2].copy()
     
     df['Valor_Final'] = valor_final
-    df['Custo_Total'] = df['Custo_Total']
     df['Lucro_Liquido'] = df['Valor_Final'] - df['Custo_Total']
-    df = df.rename(columns={
-            'Close': 'Preço de Compra ({})'.format(moeda),
-            'Strike': 'Strike ({}) - {}%'.format(moeda, strikes_dic[valor_strike]),
-            'Premio': 'Premio ({}) - {}%'.format(moeda, premio_dic[valor_premio]),
-            'Custo_Acoes': 'Custo Acoes ({})'.format(moeda),
-            'Custo_Put': 'Custo Put({})'.format(moeda),
-            'Custo_Total': 'Custo Total ({})'.format(moeda),
-            'Valor_Final': 'Valor Final ({})'.format(moeda),
-            'Lucro_Liquido': 'Lucro Liquido ({})'.format(moeda),
-            'Qtd_Acoes': '# de Ações',
-        })
+    
     return df
 
 # Execução da simulação
@@ -105,8 +94,8 @@ if st.button('Simular Estratégia'):
             df_dados_historicos = pd.DataFrame(df_dados_historicos)
             df_resultado = protective_put(df_dados_historicos, aporte_mensal, moeda)
 
-            saldo = df_resultado['Valor Final ({})'.format(moeda)].sum()
-            investido = df_resultado['Custo Total ({})'.format(moeda)].sum()
+            saldo = df_resultado['Valor_Final'].sum()
+            investido = df_resultado['Custo_Total'].sum()
             lucro = saldo - investido
             st.metric('Valor Total Acumulado', '{} {:,.2f}'.format(moeda, saldo))
             st.metric('Valor Investido Total', '{} {:,.2f}'.format(moeda, investido))
@@ -114,8 +103,8 @@ if st.button('Simular Estratégia'):
 
             # Gráfico
             fig, ax = plt.subplots(figsize=(10,6))
-            ax.plot(df_resultado.index, df_resultado['Valor Final ({})'.format(moeda)].cumsum(), label='Valor Final Acumulado', color='green')
-            ax.plot(df_resultado.index, df_resultado['Custo Total ({})'.format(moeda)].cumsum(), label='Investimento Total', color='gray', linestyle='--')
+            ax.plot(df_resultado.index, df_resultado['Valor_Final'].cumsum(), label='Valor Final Acumulado', color='green')
+            ax.plot(df_resultado.index, df_resultado['Custo_Total'].cumsum(), label='Investimento Total', color='gray', linestyle='--')
             ax.set_title('Simulação - Estratégia Protective Put')
             ax.set_ylabel('{}'.format(moeda))
             ax.legend()
@@ -123,19 +112,24 @@ if st.button('Simular Estratégia'):
             st.pyplot(fig)
 
             # Tabela de resultados
+            # Renomeando colunas para impressão da tabela
+            df_resultado = df_resultado.rename(columns={
+                'Close': 'Preço de Compra ({})'.format(moeda),
+                'Strike': 'Strike de {}%'.format(strikes_dic[valor_strike]),
+                'Premio': 'Prêmio de {}%'.format(premio_dic[valor_premio]),
+                'Custo_Acoes': 'Custo das Ações',
+                'Custo_Put': 'Custo da Put',
+                'Custo_Total': 'Custo Total',
+                'Valor_Final': 'Valor Final ({})'.format(moeda),
+                'Lucro_Liquido': 'Lucro Liquido ({})'.format(moeda),
+                'Qtd_Acoes': '# de Ações',
+            })
+
             st.subheader('Resultado por Mês')
             df_resultado.index.names = ['Data']
             df_resultado.index = df_resultado.index.strftime('%d/%m/%Y')
-            st.dataframe(df_resultado[['Preço de Compra ({})'.format(moeda),
-                                       'Strike ({}) - {}%'.format(moeda, strikes_dic[valor_strike]), 
-                                       'Preço de Venda ({})'.format(moeda),
-                                       '# de Ações',
-                                       'Premio ({}) - {}%'.format(moeda, premio_dic[valor_premio]), 
-                                       'Custo Put({})'.format(moeda),                                     
-                                       'Custo Total ({})'.format(moeda), 
-                                       'Valor Final ({})'.format(moeda), 
-                                       'Lucro Liquido ({})'.format(moeda)
-                                    ]].round(2))
+            
+            st.dataframe(df_resultado.round(2))
             
             st.markdown("""
                 ---
@@ -143,17 +137,17 @@ if st.button('Simular Estratégia'):
 
                 - **Preço de Compra ({moeda})** – Valor pago por ação
 
-                - **Strike ({moeda}) - {valor_strike}%** – Valor do strike da opção put reduzido em {valor_strike}%, representando o valor mínimo de cobertura.
+                - **Strike de {valor_strike}%** – Valor do strike da opção put reduzido em {valor_strike}%, representando o valor mínimo de cobertura.
 
-                - **Prêmio ({moeda})** – Valor de pago pela opção put por ação ({valor_premio}% do preço de compra).
+                - **Prêmio de {valor_premio}%** – Valor de pago pela opção put por ação ({valor_premio}% do preço de compra).
 
-                - **Quantidade de Ações** – Número total de ações compradas na operação.
+                - **# de Ações** – Número total de ações compradas na operação.
 
-                - **Custo Ações ({moeda})** – Preço total pago pelas ações: `Preço de Compra × # de Ações`.
+                - **Custo das Ações** – Preço total pago pelas ações: `Preço de Compra × # de Ações`.
 
-                - **Custo Put ({moeda})** – Custo total com proteção: `Prêmio × # de Ações`.
+                - **Custo da Put** – Custo total com proteção: `Prêmio × # de Ações`.
 
-                - **Custo Total ({moeda})** – Soma dos custos com ações e proteção (puts): `Custo Ações + Custo Put`.
+                - **Custo Total** – Soma dos custos com ações e proteção (puts): `Custo Ações + Custo Put`.
 
                 - **Preço de Venda ({moeda})** – Preço da ação no mês seguinte (simulação de venda no futuro).
 
