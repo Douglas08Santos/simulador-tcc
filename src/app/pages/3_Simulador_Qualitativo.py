@@ -21,24 +21,37 @@ o processo no mês seguinte.
 
 
 # Iniciar a lista no session_state
+# st.session_state = Cache
 if 'acoes' not in st.session_state:
     st.session_state.acoes = ['PETR4.SA', 'VALE3.SA', 'ITUB4.SA', 'WEGE3.SA', 'BBDC3.SA', 'ABEV3.SA']
 
 
 # Campo para adicionar nova ação
-nova_acao = st.text_input("Adicionar nova sigla:", key="input_acao")
+if "novo_ativo" not in st.session_state:
+    st.session_state.novo_ativo = ''
+# Callback para limpar campor de texto
+def submit():
+    st.session_state.novo_ativo = st.session_state.input
+    st.session_state.input = ''
 
-# Atualiza a lista se o usuário digitar algo novo
-if nova_acao and nova_acao.upper() not in st.session_state.acoes:
-    st.success('{} adicionado a lista'.format(nova_acao.upper()))
-    st.session_state.acoes.append(nova_acao.upper())
-elif nova_acao:
-    st.warning('{} já existe na lista'.format(nova_acao.upper()))
-    
-# Inputs
+st.text_input("Adicionar novo ativo:", key="input", on_change=submit, placeholder='Novo ativo')
+
+# Atualiza a lista se o usuário teclar Enter
+novo_ativo = st.session_state.novo_ativo
+if novo_ativo and novo_ativo.upper() not in st.session_state.acoes:
+    st.session_state.acoes.append(novo_ativo.upper())
+    st.success('{} adicionado a lista'.format(novo_ativo.upper()))
+    novo_ativo = st.session_state.novo_ativo = '' 
+elif novo_ativo and novo_ativo.upper() in st.session_state.acoes:
+    st.warning('{} já existe na lista'.format(novo_ativo.upper()))
+    novo_ativo = st.session_state.novo_ativo = '' 
+
+
+# Ativos
+# TODO: Fazer com que ao adicionar um novo ativo, os ativos selecionados não sumam
 ativos = st.multiselect(
     'Selecione os ativos para a simulação (ex: PETR4.SA, VALE3.SA, ITUB4.SA)',
-    options=st.session_state.acoes
+    options=st.session_state.acoes, placeholder='Escolha seus ativos'
 )
 
 # Lista de périodo predefinidas
@@ -62,11 +75,15 @@ aporte_mensal = st.number_input('Aporte Mensal', value=500, step=100)
 def baixar_dados(tickers, periodo):
     data = {}
     moedas = []
+    
     for ticker in tickers:
-        dados = yf.Ticker(ticker)
-        moedas.append(dados.get_info()['currency'])
-        df_dados_historicos = dados.history(periodo)['Close'].resample('ME').last()
-        data[ticker] = df_dados_historicos.iloc[:-1]
+        try:
+            dados = yf.Ticker(ticker)
+            moedas.append(dados.get_info()['currency'])
+            df_dados_historicos = dados.history(periodo)['Close'].resample('ME').last()
+            data[ticker] = df_dados_historicos.iloc[:-1]
+        except:
+            raise ValueError("Erro ao procurar o ativo {}. Confira o nome ou substitua por outro.".format(ticker))
     return pd.DataFrame(data), moedas
 
 def simular_momentum(df, aporte_inicial, aporte_mensal):

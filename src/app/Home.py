@@ -66,7 +66,7 @@ if ticker:
         except:
             st.warning('Não foi possivel obter o calendário de earnings')
 
-        st.subheader('Últimas Cotações da {} em'.format(ticker))
+        st.subheader('Últimas Cotações da {}'.format(ticker))
         
         # Lista de périodo predefinidas
         opcao = ['1d', '5d', '1mo', '3mo', '6mo', '1y',
