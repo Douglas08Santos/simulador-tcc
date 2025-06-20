@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-st.set_page_config(page_title='Simulador Opções', layout='wide')
+st.set_page_config(page_title='Simulador Opções', layout='centered')
 st.title('Simulador - Estratégia com Opções: Protective Put')
 
 st.markdown('''
@@ -13,8 +13,13 @@ Esta simulação demonstra a estratégia **Protective Put**, onde o investidor c
 **Premissas:**
 - Aporte mensal constante em ações
 - Compra de puts com vencimento de 30 dias
-- Strike da put é 5% abaixo do preço da ação por padrão, mas pode ser customizado
-- Prêmio da put estimado como 2% do valor da ação por padrão, mas pode ser customizado
+            
+**Personalizações disponíveis:**
+- Escolha de ativo (ticker)
+- Aporte mensal
+- Período de simulação
+- Porcentagem do Strike da put (5% abaixo do preço da ação por padrão)
+- Porcentagem do prêmio da put (2% do valor da ação por padrão)
 ''')
 
 # Entradas do usuário
@@ -32,7 +37,7 @@ periodo = st.select_slider(
     value='2 anos' # Valor Inicial
 )
 
-aporte_mensal = st.number_input('Aporte Mensal (R$)', value=500, step=50)
+aporte_mensal = st.number_input('Aporte Mensal', value=500, step=50)
 
 # Criando o select_slider para o strike
 strikes = list(range(1, 11))
@@ -83,11 +88,21 @@ def protective_put(df, aporte_mensal, moeda):
     
     return df
 
+def baixar_dados(ticker):
+    try:
+        dados = yf.Ticker(ticker)
+        moeda = dados.get_info()['currency']
+    except:
+        raise ValueError("Erro ao procurar o ativo {}. Confira o nome ou substitua por outro.".format(ticker))
+    
+    return dados
+
 # Execução da simulação
 if st.button('Simular Estratégia'):
     with st.spinner('Executando simulação da estratégia Protective Put...'):
         try:
-            dados = yf.Ticker(ticker)
+            ticker = ticker.upper()
+            dados = baixar_dados(ticker)
             df_dados_historicos = dados.history(opcoes_dic[periodo])['Close'].resample('ME').last()
             moeda = dados.get_info()['currency']   
             # Converter para Dataframe

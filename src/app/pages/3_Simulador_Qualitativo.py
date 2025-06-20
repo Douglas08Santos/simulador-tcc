@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-st.set_page_config(page_title='Simulador Qualitativo (Momentum)', layout='wide')
+st.set_page_config(page_title='Simulador Qualitativo (Momentum)', layout='centered')
 st.title('Simulador - Estratégia de Momentum (Qualitativa)')
 
 st.markdown('''
@@ -71,13 +71,13 @@ aporte_mensal = st.number_input('Aporte Mensal', value=500, step=100)
 
 # Função de simulação
 @st.cache_data
-
 def baixar_dados(tickers, periodo):
     data = {}
     moedas = []
     
     for ticker in tickers:
         try:
+            ticker = ticker.upper()
             dados = yf.Ticker(ticker)
             moedas.append(dados.get_info()['currency'])
             df_dados_historicos = dados.history(periodo)['Close'].resample('ME').last()
@@ -120,8 +120,8 @@ def simular_momentum(df, aporte_inicial, aporte_mensal):
                     'Qtd': qtd,
                     'Restante Alocação': round(alocacao, 2),
                     'Preço Venda': round(preco_venda, 2),
-                    'Rendimento (em %)':round((preco_venda - preco_compra)/preco_compra * 100, 2),
                     'Saldo Venda': round(qtd * preco_venda, 2),
+                    'Rendimento (em %)':round((preco_venda - preco_compra)/preco_compra * 100, 2),
                     'Saldo Final': round(saldo_final, 2)
                 })
         else:
@@ -141,8 +141,9 @@ if st.button('Simular Estratégia'):
                 df_precos, moedas = baixar_dados(ativos, opcoes_dic[periodo])
 
                 if len(set(moedas)) == 1: # Significando que a unidade monetaria entre as empresass são as mesmas:
+                    moeda = moedas[0]
                     df_resultado, saldo_final = simular_momentum(df_precos, aporte_inicial, aporte_mensal)
-                    st.metric('Saldo Final Estimado', '{} {:,.2f}'.format(moedas[0], saldo_final))
+                    st.metric('Saldo Final Estimado', '{} {:,.2f}'.format(moeda, saldo_final))
                     
                     # Gráfico de evolução
                     saldo_por_mes = df_resultado.groupby('Data')['Saldo Final'].sum()
@@ -153,7 +154,7 @@ if st.button('Simular Estratégia'):
                         ax.text(
                             x=saldo_por_mes.index[i],
                             y=saldo_por_mes.values[i],
-                            s='({}){:,.2f}'.format(moedas[0],saldo_por_mes.values[i]),  
+                            s='({}){:,.2f}'.format(moeda, saldo_por_mes.values[i]),  
                             va='top',
                             ha='left'
 
@@ -167,7 +168,50 @@ if st.button('Simular Estratégia'):
                     st.subheader('Histórico de Alocações')
                     # Converte a coluna 'Data' para datetime e formata
                     df_resultado['Data'] = pd.to_datetime(df_resultado['Data']).dt.strftime('%d/%m/%Y')
+                    # Renomeando colunas para impressão da tabela
+
+                    df_resultado = df_resultado.rename(columns={
+                        'Alocação': 'Alocação ({})'.format(moeda),
+                        'Preço Compra': 'Preço de Compra ({})'.format(moeda),
+                        'Investimento Real': 'Investimento Real ({})'.format(moeda),
+                        'Qtd': 'Quantidade',
+                        'Restante Alocação': 'Restante da Alocação ({})'.format(moeda),
+                        'Preço Venda': 'Preço de Venda ({})'.format(moeda),
+                        'Saldo Venda': 'Saldo Venda ({})'.format(moeda),
+                        'Saldo Final': 'Saldo Final ({})'.format(moeda),
+                    })
+                    
                     st.dataframe(df_resultado)
+
+                    st.markdown("""
+                    ---
+                **Observação:**
+
+                - **Data** – Data da operação de compra do ativo ou da simulação correspondente ao período analisado.
+
+                - **Ativo** – Código do ativo negociado (ex: PETR4.SA, ITUB4.SA).
+
+                - **Alocação ({moeda})** – Valor total disponível para investir naquele ativo naquele mês.
+
+                - **Preço de Compra ({moeda})** – Cotação da ação no momento da compra.
+
+                - **Investimento Real ({moeda})** – Valor efetivamente utilizado para comprar ações: `Preço de Compra × Quantidade`.
+
+                - **Quantidade** – Número de ações compradas com base no valor do investimento real.
+
+                - **Restante da Alocação ({moeda})** – Valor que sobrou da alocação original após a compra, geralmente por não ser possível comprar frações de ações.
+
+                - **Preço de Venda ({moeda})** – Cotação da ação no mês seguinte (simulação de saída).
+
+                - **Saldo Venda ({moeda})** – Valor obtido com a venda das ações: `Quantidade × Preço de Venda`.
+
+                - **Rendimento (em %)** – Variação percentual entre o preço de venda e o preço de compra: `((Preço de Venda - Preço de Compra)/ Preço de Compra × 100`.
+
+                - **Saldo Final ({moeda})** – Soma do saldo da venda com o valor restante da alocação: `Saldo Venda + Restante da Alocação`.
+
+                            
+                    """.format(moeda = moeda))
+
                 else:
                     raise ValueError("Unidades Monetárias diferentes: {}. Devem ser iguais.".format(moedas))
             except Exception as e:

@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-st.set_page_config(page_title="Simulador Técnico", layout="wide")
+st.set_page_config(page_title="Simulador Técnico", layout="centered")
 st.title("Simulador - Investidor Técnico (Médias Móveis)")
 
 st.markdown("""
@@ -12,7 +12,10 @@ Esta simulação utiliza a estratégia de cruzamento de médias móveis:
 - Compra quando a média móvel curta (20 dias) cruza acima da média longa (50 dias)
 - Venda quando a média curta cruza abaixo da média longa
 
-Você pode escolher o ativo e o período da simulação.
+**Personalizações disponíveis:**
+- Escolha de ativo (ticker)
+- Aporte inicial
+- Período de simulação
 """)
 
 # Entradas do usuário
@@ -64,11 +67,20 @@ def estrategia_cruzamento(df):
 
     return df, historico, capital
 
+def baixar_dados(ticker):
+    try:
+        dados = yf.Ticker(ticker)
+        moeda = dados.get_info()['currency']
+    except:
+        raise ValueError("Erro ao procurar o ativo {}. Confira o nome ou substitua por outro.".format(ticker))
+    
+    return dados
+
 # Simulação
 if st.button("Simular Estratégia"):
     with st.spinner("Carregando dados e executando simulação..."):
         try:
-            dados = yf.Ticker(ticker) 
+            dados = baixar_dados(ticker) 
 
              # Informações Gerais
             info = dados.get_info()
@@ -81,7 +93,7 @@ if st.button("Simular Estratégia"):
                 st.write('**Site:**', info.get('website', 'N/A'))
             with col3:
                 #Preço atual
-                historico = dados.history('1d')
+                historico = dados.history('5d')
                 preco = historico['Close'].iloc[-1]
                 moeda = dados.get_info()['currency']   
                 st.write('**Cotação Atual ({}):** {}'.format(moeda, round(preco, 2)))
@@ -109,8 +121,27 @@ if st.button("Simular Estratégia"):
                 (op[0].strftime('%d/%m/%Y'), *op[1:]) for op in operacoes
             ]
             df_op = pd.DataFrame(operacoes, columns=["Data", "Operação", "Preço ({})".format(moeda), 
-                                                     "Qtd Ações", "Capital Atual ({})".format(moeda)])
+                                                     "Quantidade de Ações", "Capital Atual ({})".format(moeda)])
+            print(df_op.columns)
             st.dataframe(df_op)
+
+            st.markdown("""
+                ---
+                **Observação:**
+
+                - **Data** – Data em que a operação (compra ou venda) foi realizada.
+
+                - **Operação** – Tipo de operação executada: geralmente **Compra** ou **Venda**.
+
+                - **Preço (BRL)** – Cotação da ação no momento da operação.
+
+                - **Quantidade de Ações** – Número de ações compradas ou vendidas na operação.
+
+                - **Capital Atual (BRL)** – Valor total acumulado após a operação, considerando o capital disponível ou o saldo resultante.
+
+                """.format(moeda = moeda))
+
+            
 
         except Exception as e:
             st.error(f"Erro ao executar simulação: {e}")

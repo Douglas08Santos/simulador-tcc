@@ -35,82 +35,92 @@ ticker = st.text_input(
     value="PETR4.SA" # Valor Inicial
 )
 
-if ticker:
+def baixar_dados(ticker):
     try:
         dados = yf.Ticker(ticker)
+        moeda = dados.get_info()['currency']
+    except:
+        raise ValueError("Erro ao procurar o ativo {}. Confira o nome ou substitua por outro.".format(ticker))
+    
+    return dados
 
-        # Informações Gerais
-        info = dados.get_info()
 
-        st.write('**Nome da Empresa:**', info.get('longName', 'N/A'))
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.write('**Setor:**', info.get('sector', 'N/A'))
-        with col2:
-            st.write('**Site:**', info.get('website', 'N/A'))
-        with col3:
-            #Preço atual
-            historico = dados.history('1d')
-            preco = historico['Close'].iloc[-1]
-            moeda = dados.get_info()['currency']   
-
-            st.write('**Cotação Atual ({}):** {}'.format(moeda, round(preco, 2)))         
-        
-        # Earnings
+if ticker:
+    with st.spinner("Carregando dados..."):
         try:
-            calendario = dados.calendar
-            data = calendario['Earnings Date']
-            data = data[0].strftime('%d/%m/%Y')
+            ticker = ticker.upper()
+            dados = baixar_dados(ticker)
+            # Informações Gerais
+            info = dados.get_info()
 
-            st.write('**Data próximo balanço da {}:** {}'.format(ticker, data))
-        except:
-            st.warning('Não foi possivel obter o calendário de earnings')
+            st.write('**Nome da Empresa:**', info.get('longName', 'N/A'))
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.write('**Setor:**', info.get('sector', 'N/A'))
+            with col2:
+                st.write('**Site:**', info.get('website', 'N/A'))
+            with col3:
+                #Preço atual
+                historico = dados.history('5d')
+                preco = historico['Close'].iloc[-1]
+                moeda = dados.get_info()['currency']   
 
-        st.subheader('Últimas Cotações da {}'.format(ticker))
-        
-        # Lista de périodo predefinidas
-        opcao = ['1d', '5d', '1mo', '3mo', '6mo', '1y',
-                    '2y', '5y', '10y', 'ytd', 'max']
-        legenda = ['1 dia', '5 dias', '1 mês', '3 meses', '6 meses',
-                    '2 anos', '5 anos', '10 anos', 'máximo']
-        opcoes_dic = dict(zip(legenda, opcao))
-        
-        # Criando o select_slider
-        periodo = st.select_slider(
-            'Selecione o período',
-            options=opcoes_dic.keys(),
-            value='5 dias' # Valor Inicial
-        )
+                st.write('**Cotação Atual ({}):** {}'.format(moeda, round(preco, 2)))         
+            
+            # Earnings
+            try:
+                calendario = dados.calendar
+                data = calendario['Earnings Date']
+                data = data[0].strftime('%d/%m/%Y')
+                st.write('**Data próximo balanço da {}:** {}'.format(ticker, data))
+            except:
+                st.warning('Não foi possivel obter o calendário de earnings')
 
-        #Obtendo dados historicos das cotações       
-        df_dados_historicos = dados.history(opcoes_dic[periodo])
-        df_dados_historicos.index.names = ['Data'] # Renomeando 'Date' por 'Data'
-        # Formatando data para dd/mm/yyyy
-        df_dados_historicos.index = df_dados_historicos.index.strftime('%d/%m/%Y')
-        df_dados_historicos = df_dados_historicos.rename(columns={
-            'Open': 'Abertura',
-            'High': 'Alta',
-            'Low': 'Baixa',
-            'Close': 'Fechamento'
-        })
+            st.subheader('Últimas Cotações da {}'.format(ticker))
+            
+            # Lista de périodo predefinidas
+            opcao = ['1d', '5d', '1mo', '3mo', '6mo', '1y',
+                        '2y', '5y', '10y', 'ytd', 'max']
+            legenda = ['1 dia', '5 dias', '1 mês', '3 meses', '6 meses',
+                        '2 anos', '5 anos', '10 anos', 'máximo']
+            opcoes_dic = dict(zip(legenda, opcao))
+            
+            # Criando o select_slider
+            periodo = st.select_slider(
+                'Selecione o período',
+                options=opcoes_dic.keys(),
+                value='5 dias' # Valor Inicial
+            )
 
-        #Impressão do Dataframe
-        st.dataframe(df_dados_historicos[
-            ['Abertura', 'Alta', 'Baixa', 'Fechamento']
-        ])
+            #Obtendo dados historicos das cotações       
+            df_dados_historicos = dados.history(opcoes_dic[periodo])
+            df_dados_historicos.index.names = ['Data'] # Renomeando 'Date' por 'Data'
+            # Formatando data para dd/mm/yyyy
+            df_dados_historicos.index = df_dados_historicos.index.strftime('%d/%m/%Y')
+            df_dados_historicos = df_dados_historicos.rename(columns={
+                'Open': 'Abertura',
+                'High': 'Alta',
+                'Low': 'Baixa',
+                'Close': 'Fechamento'
+            })
 
-        # Geração do gráfico do preço das ações
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(df_dados_historicos.index, df_dados_historicos[['Fechamento']], label="Saldo Acumulado", color='green')
-        ax.set_title("Evolução das Cotações")
-        ax.set_ylabel("Valor ({})".format(moeda))
-        ax.grid(True)
-        plt.xticks(rotation=270)
-        #plt.gca().set_xticks([])
-        st.pyplot(fig)
+            #Impressão do Dataframe
+            st.dataframe(df_dados_historicos[
+                ['Abertura', 'Alta', 'Baixa', 'Fechamento']
+            ])
 
-    except Exception as e:
-        st.warning('Erro ao buscar dados para {}'.format(e))
+            # Geração do gráfico do preço das ações
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.plot(df_dados_historicos.index, df_dados_historicos[['Fechamento']], label="Saldo Acumulado", color='green')
+            ax.set_title("Evolução das Cotações")
+            ax.set_ylabel("Valor ({})".format(moeda))
+            ax.grid(True)
+            plt.xticks(rotation=270)
+            #plt.gca().set_xticks([])
+            st.pyplot(fig)
+        except Exception as e:
+            st.warning(e)
+
 else:
     st.info('Digite um ticker para iniciar a pesquisa.')
 
