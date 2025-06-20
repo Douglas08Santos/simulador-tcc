@@ -105,10 +105,10 @@ def simular_momentum(df, aporte_inicial, aporte_mensal):
                 alocacao = investimento_total / 2
                 preco_compra = df[ativo].iloc[i]
                 qtd = alocacao // preco_compra
-                alocacao -= qtd * preco_compra
+                restante = alocacao - (qtd * preco_compra)
                 preco_venda = df[ativo].iloc[i+1]
-                saldo_venda += qtd * preco_venda
-                saldo_final = alocacao + saldo_venda
+                saldo_venda = qtd * preco_venda
+                saldo_final = restante + saldo_venda
                 saldo += saldo_final
                 
                 historico.append({
@@ -118,7 +118,7 @@ def simular_momentum(df, aporte_inicial, aporte_mensal):
                     'Preço Compra': round(preco_compra, 2),
                     'Investimento Real': round(qtd * preco_compra, 2),
                     'Qtd': qtd,
-                    'Restante Alocação': round(alocacao, 2),
+                    'Restante Alocação': round(restante, 2),
                     'Preço Venda': round(preco_venda, 2),
                     'Saldo Venda': round(qtd * preco_venda, 2),
                     'Rendimento (em %)':round((preco_venda - preco_compra)/preco_compra * 100, 2),
@@ -129,6 +129,7 @@ def simular_momentum(df, aporte_inicial, aporte_mensal):
             st.success('A recomendação para o dia {} foram: {}'.format(data, top2))
 
     df_historico = pd.DataFrame(historico)
+    saldo = df_historico['Saldo Final'].iloc[-1] + df_historico['Saldo Final'].iloc[-2]
     return df_historico, saldo
 
 # Executar simulação
