@@ -23,9 +23,12 @@ o processo no mês seguinte.
 # Iniciar a lista no session_state
 # st.session_state = Cache
 if 'acoes' not in st.session_state:
-    st.session_state.acoes = ['PETR4.SA', 'VALE3.SA', 'ITUB4.SA', 'WEGE3.SA', 'BBDC3.SA', 'ABEV3.SA']
-
-
+    st.session_state.acoes = ['PETR4.SA', 'VALE3.SA', 
+                              'ITUB4.SA', 'WEGE3.SA', 
+                              'BBDC3.SA', 'ABEV3.SA',
+                              'BBAS3.SA', 'BPAC11.SA',
+                              'SANB11.SA', 'ITSA4.SA']
+                            
 # Campo para adicionar nova ação
 if "novo_ativo" not in st.session_state:
     st.session_state.novo_ativo = ''
