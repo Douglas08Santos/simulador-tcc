@@ -144,4 +144,4 @@ Este projeto é de uso livre para fins **educacionais e acadêmicos**. Comercial
 
 > Desenvolvido por [Douglas Alexandre dos Santos](santosdouglas0809@gmail.com)
 >
-> *“A melhor forma de prever o futuro é criá-lo.” – Alan Kay*
+> *“A melhor forma de prever o futuro é criá-lo.” – Peter Drucker*
