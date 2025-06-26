@@ -11,10 +11,10 @@ Ideal para perfis conservadores ou com horizonte de longo prazo.
 """)
 
 # Entradas do usuário
-aporte_inicial = st.number_input("Aporte Inicial (R$)", value=10000, step=500)
+aporte_inicial = st.number_input("Aporte Inicial (R$)", value=500, step=500)
 aporte_mensal = st.number_input("Aporte Mensal (R$)", value=500, step=100)
 anos = st.slider("Período da Simulação (anos)", 1, 40, 10)
-taxa_anual = st.slider("Retorno Anual (%)", 1, 20, 8)
+taxa_anual = st.slider("Retorno Anual (%)", 1, 20, 5)
 
 # Função de cálculo de juros compostos
 def simular_passivo(inicial, mensal, anos, taxa):
