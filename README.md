@@ -41,7 +41,7 @@ Oferecer uma ferramenta educacional e analítica para investidores e estudantes,
 
 - Pesquisa de ativos via [Yahoo Finance](https://finance.yahoo.com)
 - Visualização de últimas cotações
-- Calendário de divulgações de resultados ("earnings")
+- Calendário de divulgações de resultados ("earnings") via [TradingView](https://www.tradingview.com/markets/stocks-usa/earnings/)
 
 ### 🔹 `1_Simulador_Passivo.py`
 
