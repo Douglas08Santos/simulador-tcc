@@ -109,23 +109,6 @@ if st.button('Simular Estratégia'):
             df_dados_historicos = pd.DataFrame(df_dados_historicos)
             df_resultado = protective_put(df_dados_historicos, aporte_mensal, moeda)
 
-            saldo = df_resultado['Valor_Final'].sum()
-            investido = df_resultado['Custo_Total'].sum()
-            lucro = saldo - investido
-            st.metric('Valor Total Acumulado', '{} {:,.2f}'.format(moeda, saldo))
-            st.metric('Valor Investido Total', '{} {:,.2f}'.format(moeda, investido))
-            st.metric('Lucro Líquido Estimado', '{} {:,.2f}'.format(moeda, lucro))
-
-            # Gráfico
-            fig, ax = plt.subplots(figsize=(10,6))
-            ax.plot(df_resultado.index, df_resultado['Valor_Final'].cumsum(), label='Valor Final Acumulado', color='green')
-            ax.plot(df_resultado.index, df_resultado['Custo_Total'].cumsum(), label='Investimento Total', color='gray', linestyle='--')
-            ax.set_title('Simulação - Estratégia Protective Put')
-            ax.set_ylabel('{}'.format(moeda))
-            ax.legend()
-            ax.grid(True)
-            st.pyplot(fig)
-
             # Tabela de resultados
             # Renomeando colunas para impressão da tabela
             df_resultado = df_resultado.rename(columns={
@@ -146,6 +129,91 @@ if st.button('Simular Estratégia'):
             
             st.dataframe(df_resultado.round(2))
             
+            # Explicação dos Resultados
+            st.markdown("---")
+            st.subheader("Explicação dos Resultados da Estratégia Protective Put")
+
+            # Cálculos principais
+            num_meses = df_resultado.shape[0]
+            valor_acumulado = df_resultado['Valor Final ({})'.format(moeda)].sum()
+            investimento_total = df_resultado['Custo Total'].sum()
+            lucro_liquido_total = df_resultado['Lucro Liquido ({})'.format(moeda)].sum()
+            rentabilidade_total = (lucro_liquido_total / investimento_total) * 100 if investimento_total else 0
+
+            # Separar os meses positivos e negativos
+            lucro_col = 'Lucro Liquido ({})'.format(moeda)
+            df_resultado[lucro_col] = pd.to_numeric(df_resultado[lucro_col], errors='coerce')
+            meses_lucro = df_resultado[df_resultado[lucro_col] > 0]
+            meses_prejuizo = df_resultado[df_resultado[lucro_col] < 0]
+
+            qtd_lucros = len(meses_lucro)
+            qtd_prejuizos = len(meses_prejuizo)
+
+            investido_nos_positivos = meses_lucro['Custo Total'].sum()
+            saldo_nos_positivos = meses_lucro['Valor Final ({})'.format(moeda)].sum()
+
+            st.markdown(f"""
+            **Parâmetros da Simulação:**
+            - Ativo analisado: **{ticker}**
+            - Aporte mensal: **{moeda} {aporte_mensal:,.2f}**
+            - Período: **{periodo}**
+            - Número de meses simulados: **{num_meses}**
+            - Strike da Put: **{valor_strike}% abaixo do preço**
+            - Prêmio da Put: **{valor_premio}% do valor da ação**
+
+            **Resultados Obtidos:**
+            - Valor total acumulado: **{moeda} {valor_acumulado:,.2f}**
+            - Total investido: **{moeda} {investimento_total:,.2f}**
+            - Lucro líquido estimado: **{moeda} {lucro_liquido_total:,.2f}**
+            - Rentabilidade acumulada: **{rentabilidade_total:.2f}%**
+
+            **Desempenho Mensal:**
+            - Meses com **lucro positivo**: **{qtd_lucros}**
+            - Meses com **prejuízo**: **{qtd_prejuizos}**
+
+            **Somente nos meses positivos:**
+            - Total investido: **{moeda} {investido_nos_positivos:,.2f}**
+            - Saldo acumulado: **{moeda} {saldo_nos_positivos:,.2f}**
+            - Rentabilidade (positivos): **{((saldo_nos_positivos - investido_nos_positivos)/investido_nos_positivos)*100:.2f}%**
+
+            **Análise:**
+            A estratégia **Protective Put** se mostrou eficaz em limitar 
+            perdas, com **{qtd_lucros}** meses gerando retornos positivos. Apesar
+            do custo adicional com a compra das opções de venda, o saldo acumulado
+            demonstra proteção contra quedas expressivas. Essa abordagem é ideal para
+            investidores que priorizam segurança em ambientes de alta volatilidade.
+            """)
+
+            # Geração de gráfico
+            st.subheader("A seguir, temos um gráfico ilustrando o progresso dessa estratégia:")
+            fig, ax = plt.subplots(figsize=(10,6))
+            ax.plot(df_resultado.index, df_resultado['Valor Final ({})'.format(moeda)].cumsum(), label='Valor Final Acumulado', color='green')
+            ax.plot(df_resultado.index, df_resultado['Custo Total'].cumsum(), label='Investimento Total', color='gray', linestyle='--')
+            ax.set_title('Simulação - Estratégia Protective Put')
+            ax.set_ylabel('{}'.format(moeda))
+            ax.legend()
+            ax.grid(True)
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
+
+            # Melhor e pior mês
+            try:
+                melhor_mes = df_resultado.loc[df_resultado[lucro_col].idxmax()]
+                pior_mes = df_resultado.loc[df_resultado[lucro_col].idxmin()]
+
+                st.markdown(f"""
+            **Melhor Mês:**
+            - Data: **{melhor_mes.name}**
+            - Lucro Líquido: **{moeda} {melhor_mes[lucro_col]:,.2f}**
+
+            **Pior Mês:**
+            - Data: **{pior_mes.name}**
+            - Lucro Líquido: **{moeda} {pior_mes[lucro_col]:,.2f}**
+            """)
+            except:
+                st.warning("Não foi possível calcular o melhor e pior mês.")
+
+
             st.markdown("""
                 ---
                 **Observação:**

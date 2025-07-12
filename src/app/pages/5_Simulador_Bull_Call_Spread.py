@@ -149,27 +149,6 @@ if st.button('Simular Estratégia'):
 
             df_resultado = simular_bull_call(df_dados_historicos, aporte_mensal, moeda)
 
-            # Resumo dos Resultados
-            saldo = df_resultado['Lucro_Bruto'].sum()
-            investido = df_resultado['Custo_Total'].sum()
-            lucro = saldo - investido
-            st.metric('Valor Total Acumulado', '{} {:,.2f}'.format(moeda, saldo))
-            st.metric('Valor Investido Total', '{} {:,.2f}'.format(moeda, investido))
-            st.metric('Lucro Líquido Estimado', '{} {:,.2f}'.format(moeda, lucro))
-
-            # Gráfico
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.plot(df_resultado.index, df_resultado['Lucro_Bruto'].cumsum(),
-                    label='Saldo Acumulado', color='green')
-            ax.plot(df_resultado.index, df_resultado['Custo_Total'].cumsum(),
-                    label='Investimento Total', color='gray', linestyle='--')
-            ax.set_title('Simulação - Estratégia Bull Call Spread')
-            ax.set_ylabel('{}'.format(moeda))
-            ax.grid(True)
-            ax.legend()
-            st.pyplot(fig)
-
-
             # Tabela de Operações# Renomeando colunas para impressão da tabela
             df_resultado = df_resultado.rename(columns={
                 'Close': 'Preço de Compra ({})'.format(moeda),
@@ -189,6 +168,92 @@ if st.button('Simular Estratégia'):
             df_resultado.index = df_resultado.index.strftime('%d/%m/%Y')
             st.subheader('Resultado da Simulação - Bull Call Spread')
             st.dataframe(df_resultado.round(2))
+
+             # Explicação dos Resultados
+            st.subheader("Explicação dos Resultados")
+
+            # Cálculos complementares
+            num_meses = df_resultado.shape[0]
+            meses_lucrativos = (df_resultado['Lucro Liquído ({})'.format(moeda)] > 0).sum()
+            meses_negativos = (df_resultado['Lucro Liquído ({})'.format(moeda)] < 0).sum()
+            valor_final = df_resultado['Lucro Bruto ({})'.format(moeda)].sum()
+            aporte_total = df_resultado["Custo Total"].sum()
+            rentabilidade_total = (valor_final - aporte_total) / aporte_total * 100 if aporte_total != 0 else 0
+
+            melhor_mes = df_resultado.loc[df_resultado['Lucro Liquído ({})'.format(moeda)].idxmax()]
+            pior_mes = df_resultado.loc[df_resultado['Lucro Liquído ({})'.format(moeda)].idxmin()]
+
+            # Filtrar apenas os meses com lucro líquido positivo
+            df_positivos = df_resultado[df_resultado['Lucro Liquído ({})'.format(moeda)] > 0]
+
+            # Cálculos específicos
+            valor_final_positivo = df_positivos['Lucro Bruto ({})'.format(moeda)].sum()
+            aporte_total_positivo = df_positivos["Custo Total"].sum()
+            lucro_liquido_positivo = valor_final_positivo - aporte_total_positivo
+
+            st.markdown(f"""
+            **Parâmetros definidos:**
+            - Aporte mensal: **{moeda} {aporte_mensal:,.2f}**
+            - Período analisado: **{periodo}**
+            - Estratégia utilizada: **Bull Call Spread**
+            - Strike de compra (ITM): **{valor_strike_compra}% abaixo** do preço da ação
+            - Strike de venda (OTM): **{valor_strike_venda}% acima** do preço da ação
+            - Prêmio ITM: **{valor_premio_itm}%** do preço da ação
+            - Prêmio OTM: **{valor_premio_otm}%** do preço da ação
+
+            **Resumo do desempenho:**
+            - Meses com **lucro líquido positivo**: **{meses_lucrativos}**
+            - Meses com **resultado negativo**: **{meses_negativos}**
+            - **Valor acumulado bruto (lucros antes dos custos):** {moeda} {valor_final:,.2f}
+            - **Valor total investido na estratégia:** {moeda} {aporte_total:,.2f}
+            - **Lucro líquido estimado:** {moeda} {valor_final - aporte_total:,.2f}
+            - **Rentabilidade acumulada:** {rentabilidade_total:.2f}%
+    
+            **Resultados Somente dos Meses Lucrativos**
+            - **Total de meses com lucro:** {df_positivos.shape[0]}  
+            - **Valor acumulado bruto (apenas meses positivos):** {moeda} {valor_final_positivo:,.2f}  
+            - **Valor investido (nesses meses):** {moeda} {aporte_total_positivo:,.2f}  
+            - **Lucro líquido nesses meses:** {moeda} {lucro_liquido_positivo:,.2f}
+
+            **Melhor mês:**
+            - Data: **{melhor_mes.name}**
+            - Preço de compra: **{moeda} {melhor_mes['Preço de Compra ({})'.format(moeda)]:,.2f}**
+            - Preço de venda: **{moeda} {melhor_mes['Preço de Venda ({})'.format(moeda)]:,.2f}**
+            - Lucro líquido: **{moeda} {melhor_mes['Lucro Liquído ({})'.format(moeda)]:,.2f}**
+
+            **Pior mês:**
+            - Data: **{pior_mes.name}**
+            - Preço de compra: **{moeda} {pior_mes['Preço de Compra ({})'.format(moeda)]:,.2f}**
+            - Preço de venda: **{moeda} {pior_mes['Preço de Venda ({})'.format(moeda)]:,.2f}**
+            - Lucro líquido: **{moeda} {pior_mes['Lucro Liquído ({})'.format(moeda)]:,.2f}**
+
+            **Análise:**
+            A estratégia **Bull Call Spread** consiste na **compra de uma call ITM** e **venda de uma call OTM**. 
+            Isso resulta em um **custo líquido inicial**, que limita a perda máxima ao valor desse custo.
+
+            - O **lucro é limitado** pela diferença entre os strikes, subtraída do custo da operação.
+            - Resultados positivos ocorrem quando o preço do ativo no vencimento **fica acima do strike da call comprada (ITM)**.
+            - Resultados excelentes ocorrem quando o preço **atinge ou supera o strike da call vendida (OTM)**.
+            - Em meses com desvalorização ou lateralização do ativo, o **lucro é zero ou negativo**, já que o custo da estratégia não é recuperado.
+
+            O desempenho ao longo do tempo depende da **frequência com que o ativo se valoriza dentro da faixa do spread**.
+            """
+            )
+
+             # Gráfico
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.plot(df_resultado.index, df_resultado['Lucro_Bruto'].cumsum(),
+                    label='Saldo Acumulado', color='green')
+            ax.plot(df_resultado.index, df_resultado['Custo_Total'].cumsum(),
+                    label='Investimento Total', color='gray', linestyle='--')
+            ax.set_title('Simulação - Estratégia Bull Call Spread')
+            ax.set_ylabel('{}'.format(moeda))
+            ax.grid(True)
+            ax.legend()
+            st.pyplot(fig)
+
+
+
 
             st.markdown("""
                 ---

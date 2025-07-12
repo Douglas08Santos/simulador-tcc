@@ -1,20 +1,59 @@
-from bs4 import BeautifulSoup
 from datetime import datetime
-import requests
 import streamlit as st
 import yfinance as yf
-import pandas as pd
 import matplotlib.pyplot as plt
 from earnings.earnings import empresas
 
-st.set_page_config(page_title='Simulador', layout='centered')
+ # Lista de périodo predefinidas
+opcao = ['1d', '5d', '1mo', '3mo', '6mo', '1y',
+            '2y', '5y', '10y', 'ytd', 'max']
+legenda = ['1 dia', '5 dias', '1 mês', '3 meses', '6 meses',
+            '2 anos', '5 anos', '10 anos', 'máximo']
+opcoes_dic = dict(zip(legenda, opcao))
 
-# Parâmetros de entrada do usuário
-#st.sidebar.header('Parâmetros da Simulação')
+
+def baixar_dados(ticker):
+    try:
+        dados = yf.Ticker(ticker)
+    except:
+        raise ValueError("Erro ao procurar o ativo {}. Confira o nome ou substitua por outro.".format(ticker))
+    
+    return dados
+
+def dados_historicos(dados, periodo):
+    df_dados_historicos = dados.history(periodo)
+    df_dados_historicos.index.names = ['Data'] # Renomeando 'Date' por 'Data'
+    # Formatando data para dd/mm/yyyy
+    df_dados_historicos.index = df_dados_historicos.index.strftime('%d/%m/%Y')
+    df_dados_historicos = df_dados_historicos.rename(columns={
+        'Open': 'Abertura',
+        'High': 'Alta',
+        'Low': 'Baixa',
+        'Close': 'Fechamento'
+    })
+
+    return df_dados_historicos
+
+def criar_gráfico(df_dados_historicos):
+    # Geração do gráfico do preço das ações
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(df_dados_historicos.index, df_dados_historicos[['Fechamento']], label="Saldo Acumulado", color='green')
+    ax.set_title("Evolução das Cotações")
+    ax.set_ylabel("Valor ({})".format(moeda))
+    ax.grid(True)
+    plt.xticks(rotation=270)
+
+    return fig
+
+# -------------- Streamlit
+st.set_page_config(page_title='Simulador', layout='centered')
 
 # Título
 titulo = 'Pagina Inicial'
 st.title(titulo)
+
+#api_key = st.secrets['api']['key']
+#st.write(api_key)
 
 st.markdown("""
 Esta página permite visualizar o calendário de divulgação de resultados (earnings) para ações, pesquisar ações e consultar cotações atuais.
@@ -34,16 +73,6 @@ ticker = st.text_input(
     'Digite o ticker da ação (ex: AAPL, MSFT, PETR4.SA):',
     value="PETR4.SA" # Valor Inicial
 )
-
-def baixar_dados(ticker):
-    try:
-        dados = yf.Ticker(ticker)
-        moeda = dados.get_info()['currency']
-    except:
-        raise ValueError("Erro ao procurar o ativo {}. Confira o nome ou substitua por outro.".format(ticker))
-    
-    return dados
-
 
 if ticker:
     with st.spinner("Carregando dados..."):
@@ -78,31 +107,15 @@ if ticker:
 
             st.subheader('Últimas Cotações da {}'.format(ticker))
             
-            # Lista de périodo predefinidas
-            opcao = ['1d', '5d', '1mo', '3mo', '6mo', '1y',
-                        '2y', '5y', '10y', 'ytd', 'max']
-            legenda = ['1 dia', '5 dias', '1 mês', '3 meses', '6 meses',
-                        '2 anos', '5 anos', '10 anos', 'máximo']
-            opcoes_dic = dict(zip(legenda, opcao))
-            
-            # Criando o select_slider
+            # Selecionar periodo
             periodo = st.select_slider(
                 'Selecione o período',
                 options=opcoes_dic.keys(),
                 value='5 dias' # Valor Inicial
             )
 
-            #Obtendo dados historicos das cotações       
-            df_dados_historicos = dados.history(opcoes_dic[periodo])
-            df_dados_historicos.index.names = ['Data'] # Renomeando 'Date' por 'Data'
-            # Formatando data para dd/mm/yyyy
-            df_dados_historicos.index = df_dados_historicos.index.strftime('%d/%m/%Y')
-            df_dados_historicos = df_dados_historicos.rename(columns={
-                'Open': 'Abertura',
-                'High': 'Alta',
-                'Low': 'Baixa',
-                'Close': 'Fechamento'
-            })
+            #Obtendo dados historicos das cotações      
+            df_dados_historicos = dados_historicos(dados, opcoes_dic[periodo]) 
 
             #Impressão do Dataframe
             st.dataframe(df_dados_historicos[
@@ -110,14 +123,8 @@ if ticker:
             ])
 
             # Geração do gráfico do preço das ações
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.plot(df_dados_historicos.index, df_dados_historicos[['Fechamento']], label="Saldo Acumulado", color='green')
-            ax.set_title("Evolução das Cotações")
-            ax.set_ylabel("Valor ({})".format(moeda))
-            ax.grid(True)
-            plt.xticks(rotation=270)
-            #plt.gca().set_xticks([])
-            st.pyplot(fig)
+            grafico = criar_gráfico(df_dados_historicos)
+            st.pyplot(grafico)
         except Exception as e:
             st.warning(e)
 

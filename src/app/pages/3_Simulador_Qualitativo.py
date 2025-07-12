@@ -98,8 +98,8 @@ def simular_momentum(df, aporte_inicial, aporte_mensal):
         top2 = retornos.sort_values(ascending=False).head(2).index.tolist()
 
         if i+1 < len(df):
-            # No primeiro mês ele não faz o aporte mensal, só trabalha com o aporte inicial
-            investimento_total = saldo + aporte_mensal if i != 2 else saldo
+            saldo = aporte_inicial
+            investimento_total = saldo + aporte_mensal
 
             saldo = 0
             saldo_venda = 0
@@ -112,7 +112,6 @@ def simular_momentum(df, aporte_inicial, aporte_mensal):
                 preco_venda = df[ativo].iloc[i+1]
                 saldo_venda = qtd * preco_venda
                 saldo_final = restante + saldo_venda
-                saldo += saldo_final
                 
                 historico.append({
                     'Data': df.index[i],
@@ -132,8 +131,7 @@ def simular_momentum(df, aporte_inicial, aporte_mensal):
             st.success('A recomendação para o dia {} foram: {}'.format(data, top2))
 
     df_historico = pd.DataFrame(historico)
-    saldo = df_historico['Saldo Final'].iloc[-1] + df_historico['Saldo Final'].iloc[-2]
-    return df_historico, saldo
+    return df_historico
 
 # Executar simulação
 if st.button('Simular Estratégia'):
@@ -146,27 +144,7 @@ if st.button('Simular Estratégia'):
 
                 if len(set(moedas)) == 1: # Significando que a unidade monetaria entre as empresass são as mesmas:
                     moeda = moedas[0]
-                    df_resultado, saldo_final = simular_momentum(df_precos, aporte_inicial, aporte_mensal)
-                    st.metric('Saldo Final Estimado', '{} {:,.2f}'.format(moeda, saldo_final))
-                    
-                    # Gráfico de evolução
-                    saldo_por_mes = df_resultado.groupby('Data')['Saldo Final'].sum()
-                    fig, ax = plt.subplots(figsize=(10, 6))
-                    ax.plot(saldo_por_mes.index, saldo_por_mes.values, marker='o', label='Saldo Acumulado')
-                    ax.set_title('Evolução do Capital - Estratégia de Momentum')
-                    for i in range(len(saldo_por_mes.index)):
-                        ax.text(
-                            x=saldo_por_mes.index[i],
-                            y=saldo_por_mes.values[i],
-                            s='({}){:,.2f}'.format(moeda, saldo_por_mes.values[i]),  
-                            va='top',
-                            ha='left'
-
-                        )
-                    ax.set_ylabel('R$')
-                    ax.grid(True)
-                    ax.legend()
-                    st.pyplot(fig)
+                    df_resultado = simular_momentum(df_precos, aporte_inicial, aporte_mensal)
 
                     # Tabela de Alocações
                     st.subheader('Histórico de Alocações')
@@ -186,6 +164,107 @@ if st.button('Simular Estratégia'):
                     })
                     
                     st.dataframe(df_resultado)
+
+                    # Cálculo dos dados agregados para explicação
+                    num_meses = df_resultado['Data'].nunique()
+                    ativos_usados = df_resultado['Ativo'].nunique()
+                    saldo_final_total = df_resultado['Saldo Final ({})'.format(moeda)].sum()
+                    aporte_total = aporte_inicial + (aporte_mensal * (num_meses - 1))
+                    ganho_total = saldo_final_total - aporte_total
+                    retorno_percentual = (ganho_total / aporte_total) * 100
+
+                    st.markdown("---")
+                    st.subheader("Explicação dos Resultados")
+
+                    st.markdown(f"""
+                    **Parâmetros definidos:**
+                    - Aporte inicial: **{moeda} {aporte_inicial:,.2f}**
+                    - Aporte mensal: **{moeda} {aporte_mensal:,.2f}**
+                    - Período analisado: **{periodo}**
+                    - Ativos utilizados: **{ativos_usados}** ativos
+                    - Alocações mensais realizadas: **{num_meses}** (**{num_meses*2}** alocações inviduais)
+                    """)
+
+                    try:
+                        # Garantindo que as colunas numéricas estão no formato correto
+                        df_resultado["Rendimento (em %)"] = pd.to_numeric(df_resultado["Rendimento (em %)"], errors="coerce")
+                        df_resultado["Saldo Final ({})".format(moeda)] = pd.to_numeric(df_resultado["Saldo Final ({})".format(moeda)], errors="coerce")
+                        df_resultado["Alocação ({})".format(moeda)] = pd.to_numeric(df_resultado["Alocação ({})".format(moeda)], errors="coerce")
+
+                        resumo_ativos = df_resultado.groupby("Ativo").agg(
+                            vezes_escolhido=("Ativo", "count"),
+                            rendimentos_positivos=("Rendimento (em %)", lambda x: (x > 0).sum()),
+                            rendimentos_negativos=("Rendimento (em %)", lambda x: (x < 0).sum()),
+                            media_retorno=("Rendimento (em %)", "mean"),
+                            retorno_maximo=("Rendimento (em %)", "max"),
+                            retorno_minimo=("Rendimento (em %)", "min"),
+                        ).sort_values(by="vezes_escolhido", ascending=False)
+
+                        resumo_ativos = resumo_ativos.rename(columns={
+                            'vezes_escolhido': '# Escolhido',
+                            'rendimentos_positivos': 'Rendimentos Positivos',
+                            'rendimentos_negativos': 'Rendimentos Negativos',
+                            'media_retorno': 'Retorno Médio',
+                            'retorno_maximo': 'Retorno Máximo',
+                            'retorno_minimo': 'Retorno Minimo'
+                        })
+
+                        st.dataframe(resumo_ativos.round(2))
+
+                        total_ciclos = df_resultado.shape[0] // 2
+                        valor_final = df_resultado["Saldo Final ({})".format(moeda)].sum()
+                        aporte_total_df = df_resultado["Alocação ({})".format(moeda)].sum()
+                        rentabilidade_total = (valor_final - aporte_total_df) / aporte_total_df * 100
+
+                        melhor = df_resultado.loc[df_resultado["Rendimento (em %)"].idxmax()]
+                        pior = df_resultado.loc[df_resultado["Rendimento (em %)"].idxmin()]
+
+                        st.markdown(f"""
+                    - **Total de ciclos de investimento:** {total_ciclos} ({total_ciclos*2} alocações individuais)  
+                    - **Aporte total (somado da alocação):** {moeda} {aporte_total_df:,.2f}  
+                    - **Valor final acumulado:** {moeda} {valor_final:,.2f}  
+                    - **Rentabilidade acumulada:** {rentabilidade_total:.2f}%  
+
+                    **Melhor rendimento individual:**  
+                    - Ativo: **{melhor['Ativo']}**  
+                    - Data: {melhor['Data']}  
+                    - Retorno: **{melhor['Rendimento (em %)']}%**
+
+                    **Pior rendimento individual:**  
+                    - Ativo: **{pior['Ativo']}**  
+                    - Data: {pior['Data']}  
+                    - Retorno: **{pior['Rendimento (em %)']}%**
+
+                     **Análise:**
+                    A estratégia de momentum favorece ativos com desempenho recente superior, 
+                    realocando o capital mensalmente nos dois com melhor desempenho nos últimos 
+                    dois meses. Neste cenário, o resultado mostra um ganho líquido expressivo, reforçando
+                    a eficácia da abordagem em tendências positivas. No entanto, a estratégia pode apresentar
+                    maior rotatividade e maior exposição a reversões repentinas de mercado.
+                    """)
+
+                    except Exception as e:
+                        st.warning(f"Erro ao gerar estatísticas: {e}")
+
+                    # Gráfico de evolução
+                    st.subheader('Gráfico de Evolução')
+
+                    # Converter a coluna de datas para datetime
+                    df_resultado['Data'] = pd.to_datetime(df_resultado['Data'], dayfirst=True)
+
+                    # Agrupar por mês e somar os saldos finais
+                    df_mensal = df_resultado.groupby(df_resultado['Data'].dt.to_period('M'))['Saldo Final ({})'.format(moeda)].sum().reset_index()
+                    df_mensal['Data'] = df_mensal['Data'].dt.to_timestamp()
+
+                    # Plotar o gráfico
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    ax.plot(df_mensal['Data'], df_mensal['Saldo Final ({})'.format(moeda)], marker='o', linestyle='-', color='royalblue')
+                    ax.set_title('Evolução do Capital - Estratégia de Momentum')
+                    ax.set_ylabel('Saldo Final ({})'.format(moeda))
+                    ax.grid(True)         
+
+                    st.pyplot(fig)
+
 
                     st.markdown("""
                     ---

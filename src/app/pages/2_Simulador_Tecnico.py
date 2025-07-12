@@ -4,36 +4,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-st.set_page_config(page_title="Simulador Técnico", layout="centered")
-st.title("Simulador - Investidor Técnico (Médias Móveis)")
-
-st.markdown("""
-Esta simulação utiliza a estratégia de cruzamento de médias móveis:
-- Compra quando a média móvel curta (20 dias) cruza acima da média longa (50 dias)
-- Venda quando a média curta cruza abaixo da média longa
-
-**Personalizações disponíveis:**
-- Escolha de ativo (ticker)
-- Aporte inicial
-- Período de simulação
-""")
-
-# Entradas do usuário
-ticker = st.text_input("Ticker da Ação (ex: PETR4.SA, VALE3.SA, AAPL)", value="PETR4.SA")
-
 # Lista de périodo predefinidas
 opcao = ['6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']
 legenda = ['6 meses', '2 anos', '5 anos', '10 anos', 'máximo']
 opcoes_dic = dict(zip(legenda, opcao))
-
-# Criando o select_slider
-periodo = st.select_slider(
-    'Selecione o período, dos últimos:',
-    options=opcoes_dic.keys(),
-    value='2 anos' # Valor Inicial
-)
-
-capital_inicial = st.number_input("Capital Inicial", min_value=500, value=500, step=500)
 
 # Função para aplicar estratégia
 def estrategia_cruzamento(df):
@@ -76,6 +50,34 @@ def baixar_dados(ticker):
     
     return dados
 
+
+# ---- Streamlit
+st.set_page_config(page_title="Simulador Técnico", layout="centered")
+st.title("Simulador - Investidor Técnico (Médias Móveis)")
+
+st.markdown("""
+Esta simulação utiliza a estratégia de cruzamento de médias móveis:
+- Compra quando a média móvel curta (20 dias) cruza acima da média longa (50 dias)
+- Venda quando a média curta cruza abaixo da média longa
+
+**Personalizações disponíveis:**
+- Escolha de ativo (ticker)
+- Aporte inicial
+- Período de simulação
+""")
+
+# Entradas do usuário
+ticker = st.text_input("Ticker da Ação (ex: PETR4.SA, VALE3.SA, AAPL)", value="PETR4.SA")
+
+# Criando o select_slider
+periodo = st.select_slider(
+    'Selecione o período, dos últimos:',
+    options=opcoes_dic.keys(),
+    value='2 anos' # Valor Inicial
+)
+
+capital_inicial = st.number_input("Capital Inicial", min_value=500, value=500, step=500)
+
 # Simulação
 if st.button("Simular Estratégia"):
     with st.spinner("Carregando dados e executando simulação..."):
@@ -100,10 +102,56 @@ if st.button("Simular Estratégia"):
 
             df_dados_historicos = dados.history(opcoes_dic[periodo])
             df, operacoes, capital_final = estrategia_cruzamento(df_dados_historicos)
+           
+            # Formatar a data como "dd/mm/aaaa"
+            operacoes = [
+                (op[0].strftime('%d/%m/%Y'), *op[1:]) for op in operacoes
+            ]
+            df_op = pd.DataFrame(operacoes, columns=["Data", "Operação", "Preço ({})".format(moeda), 
+                                                     "Quantidade de Ações", "Capital Atual ({})".format(moeda)])
 
-            st.metric("Capital Final", '{} {:,.2f}'.format(moeda, capital_final))
+            # Resumo explicativo
+            st.subheader("Explicação dos Resultados")
+
+            # Cálculos
+            num_operacoes = len(df_op)
+            capital_final = df_op.iloc[-1, -1]
+            ganho_total = capital_final - capital_inicial
+            retorno_percentual = (ganho_total / capital_inicial) * 100
+
+            # Contar operações lucrativas vs negativas
+            lucros = df_op[df_op["Capital Atual ({})".format(moeda)].diff() > 0].shape[0]
+            prejuizos = num_operacoes - lucros
+
+            st.markdown(f"""
+            **Parâmetros definidos:**
+            - Ativo analisado: `{ticker}`
+            - Capital inicial: **{moeda} {capital_inicial:,.2f}**
+            - Período da simulação: **{periodo}**
+            - Estratégia: Cruzamento de Médias Móveis (MM20 x MM50)
+
+            **Resultados obtidos:**
+            - Número total de operações: **{num_operacoes}**
+            - Operações com lucro: **{lucros}**
+            - Operações com prejuízo: **{prejuizos}**
+            - Capital final estimado: **{moeda} {capital_final:,.2f}**
+            - Ganho líquido: **{moeda} {ganho_total:,.2f}**
+            - Rentabilidade: **{retorno_percentual:.2f}%**
+
+            **Análise:**
+            A estratégia de cruzamento de médias móveis é uma técnica amplamente 
+            usada para capturar tendências no mercado. Apesar de algumas operações 
+            não resultarem em lucro, uma avaliação completa deve sempre considerar 
+            também os períodos de prejuízo para medir a **robustez e consistência** 
+            da técnica ao longo do tempo..
+
+            """)
+             # Resultados
+            st.subheader("Histórico de Operações")
+            st.dataframe(df_op)
 
             # Geração de gráfico
+            st.subheader("A seguir, temos um gráfico ilustrando o progresso dessa estratégia:")
             fig, ax = plt.subplots(figsize=(12, 5))
             ax.plot(df.index, df['Close'], label='Preço')
             ax.plot(df.index, df['MM20'], label='MM20', linestyle='--')
@@ -112,18 +160,6 @@ if st.button("Simular Estratégia"):
             ax.legend()
             ax.grid(True)
             st.pyplot(fig)
-
-            # Resultados
-            st.subheader("Histórico de Operações")
-           
-            # Formatar a data como "dd/mm/aaaa"
-            operacoes = [
-                (op[0].strftime('%d/%m/%Y'), *op[1:]) for op in operacoes
-            ]
-            df_op = pd.DataFrame(operacoes, columns=["Data", "Operação", "Preço ({})".format(moeda), 
-                                                     "Quantidade de Ações", "Capital Atual ({})".format(moeda)])
-            print(df_op.columns)
-            st.dataframe(df_op)
 
             st.markdown("""
                 ---
