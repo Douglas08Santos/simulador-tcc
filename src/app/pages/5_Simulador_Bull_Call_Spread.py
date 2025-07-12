@@ -5,86 +5,6 @@ from datetime import datetime
 
 import yfinance as yf
 
-st.set_page_config(page_title='Simulador Bull Call Spread', layout='centered')
-st.title('Simulador - Estratégia com Opções: Bull Call Spread')
-
-st.markdown('''
-Esta simulação utiliza a estratégia **Bull Call Spread**, onde:
-- O investidor **compra uma call ITM** (in-the-money)
-- E simultaneamente **vende uma call OTM** (out-of-the-money)
-
-A estratégia busca lucro com **alta moderada do ativo**, limitando tanto o lucro quanto a perda.
-
-            
-**Premissas:**
-- Aporte mensal constante em ações
-- Compra e venda de opções com strike e prêmios estimados a partir do preço da ação            
-- Compra de puts com vencimento de 30 dias
-            
-**Personalizações disponíveis:**
-- Escolha de ativo (ticker)
-- Período de simulação
-- Aporte mensal
-- Porcentagem do strike de venda (limite superior, OTM) (5% acima do preço da ação, por padrão)
-- Porcentagem do strike de compra (limite inferior, ITM) (5% abaixo do preço da ação, por padrão)        
-- Porcentagem do prêmio ITM (8% do valor da ação, por padrão)
-- Porcentagem do prêmio OTM (3% do valor da ação, por padrão)
-''')
-
-# Entradas do usuário
-ticker = st.text_input('Ticker da Ação (ex: PETR4.SA, VALE3.SA, AAPL)', value='PETR4.SA')
-
-# Lista de périodo predefinidas
-opcao = ['6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']
-legenda = ['6 meses', '2 anos', '5 anos', '10 anos', 'máximo']
-opcoes_dic = dict(zip(legenda, opcao))
-
-# Criando o select_slider
-periodo = st.select_slider(
-    'Selecione o período, dos últimos:',
-    options=opcoes_dic.keys(),
-    value='2 anos' # Valor Inicial
-)
-
-aporte_mensal = st.number_input('Aporte Mensal (R$)', value=500, step=50)
-
-
-# Configuração de parametros 
-# Criando o select_slider para o strike
-strikes = list(range(1, 11))
-legenda_strike = [str(i) for i in range(1, 11)]
-strikes_dic = dict(zip(legenda_strike, strikes))
-
-# Limite Superior
-valor_strike_venda = st.select_slider(
-    'Selecione a porcentagem (%) do strike de venda (limite superior, OTM):',
-    options=legenda_strike,
-    value='5' # Valor Inicial
-)
-
-valor_strike_compra = st.select_slider(
-    'Selecione a porcentagem (%) do strike de compra (limite inferior, ITM):',
-    options=legenda_strike,
-    value='5' # Valor Inicial
-)
-
-# Criando o select_slider para os prêmios
-premios = list(range(1, 11))
-legenda_premio = [str(i) for i in range(1, 11)]
-premio_dic = dict(zip(legenda_premio, premios))
-
-valor_premio_itm = st.select_slider(
-    'Selecione a porcentagem (%) do prêmio ITM:',
-    options=legenda_strike,
-    value='8' # Valor Inicial
-)
-
-valor_premio_otm = st.select_slider(
-    'Selecione a porcentagem (%) do prêmio OTM:',
-    options=legenda_strike,
-    value='3' # Valor Inicial
-)
-
 # Cálculos
 # Strike Venda - OTM - Superior
 # Strike Compra - ITM - Inferior
@@ -135,6 +55,89 @@ def baixar_dados(ticker):
         raise ValueError("Erro ao procurar o ativo {}. Confira o nome ou substitua por outro.".format(ticker))
     
     return dados
+
+# --- Streamlit
+st.set_page_config(page_title='Simulador Bull Call Spread', layout='centered')
+st.title('Simulador - Estratégia com Opções: Bull Call Spread')
+
+st.markdown('''
+Esta simulação utiliza a estratégia **Bull Call Spread**, onde:
+- O investidor **compra uma call ITM** (in-the-money)
+- E simultaneamente **vende uma call OTM** (out-of-the-money)
+
+A estratégia busca lucro com **alta moderada do ativo**, limitando tanto o lucro quanto a perda.
+
+            
+**Premissas:**
+- Aporte mensal constante em ações
+- Compra e venda de opções com strike e prêmios estimados a partir do preço da ação            
+- Compra de puts com vencimento de 30 dias
+            
+**Personalizações disponíveis:**
+- Escolha de ativo (ticker)
+- Período de simulação
+- Aporte mensal
+- Porcentagem do strike de venda (limite superior, OTM) (5% acima do preço da ação, por padrão)
+- Porcentagem do strike de compra (limite inferior, ITM) (5% abaixo do preço da ação, por padrão)        
+- Porcentagem do prêmio ITM (8% do valor da ação, por padrão)
+- Porcentagem do prêmio OTM (3% do valor da ação, por padrão)
+''')
+
+# Entradas do usuário
+ticker = st.text_input('Ticker da Ação (ex: PETR4.SA, VALE3.SA, AAPL)', value='PETR4.SA')
+
+# Lista de périodo predefinidas
+opcao = ['6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']
+legenda = ['6 meses', '2 anos', '5 anos', '10 anos', 'máximo']
+opcoes_dic = dict(zip(legenda, opcao))
+
+# Criando o select_slider
+periodo = st.select_slider(
+    'Selecione o período, dos últimos:',
+    options=opcoes_dic.keys(),
+    value='2 anos' # Valor Inicial
+)
+
+aporte_mensal = st.number_input('Aporte Mensal', value=500, step=500)
+
+
+# Configuração de parametros 
+# Criando o select_slider para o strike
+strikes = list(range(1, 11))
+legenda_strike = [str(i) for i in range(1, 11)]
+strikes_dic = dict(zip(legenda_strike, strikes))
+
+# Limite Superior
+valor_strike_venda = st.select_slider(
+    'Selecione a porcentagem (%) do strike de venda (limite superior, OTM):',
+    options=legenda_strike,
+    value='5' # Valor Inicial
+)
+
+valor_strike_compra = st.select_slider(
+    'Selecione a porcentagem (%) do strike de compra (limite inferior, ITM):',
+    options=legenda_strike,
+    value='5' # Valor Inicial
+)
+
+# Criando o select_slider para os prêmios
+premios = list(range(1, 11))
+legenda_premio = [str(i) for i in range(1, 11)]
+premio_dic = dict(zip(legenda_premio, premios))
+
+valor_premio_itm = st.select_slider(
+    'Selecione a porcentagem (%) do prêmio ITM:',
+    options=legenda_strike,
+    value='8' # Valor Inicial
+)
+
+valor_premio_otm = st.select_slider(
+    'Selecione a porcentagem (%) do prêmio OTM:',
+    options=legenda_strike,
+    value='3' # Valor Inicial
+)
+
+
 
 
 if st.button('Simular Estratégia'):
@@ -257,33 +260,19 @@ if st.button('Simular Estratégia'):
 
             st.markdown("""
                 ---
-                **Observação:**
-
+                **Legenda da tabela:**
                 - **Preço de Compra ({moeda})** – Valor da ação subjacente no momento da montagem da estratégia.
-
                 - **Strike Inferior (ITM) {strike_compra}%** – Preço de exercício da opção de compra **dentro do dinheiro** (In the Money), 5% abaixo do preço atual.
-
                 - **Strike Superior (OTM) {strike_venda}%** – Preço de exercício da opção de compra **fora do dinheiro** (Out of the Money), 5% acima do preço atual.
-
                 - **Spread** – Diferença entre os strikes: `Strike Superior - Strike Inferior`. Representa o ganho bruto máximo possível por ação.
-
                 - **Prêmio ITM {premio_itm}%** – Prêmio (preço) pago pela opção de strike inferior (ITM), por padrão é considerado {premio_itm}% do valor da ação.
-
                 - **Prêmio OTM {premio_otm}%** – Prêmio (preço) recebido pela venda da opção de strike superior (OTM), por padrão é considerando {premio_otm}% do valor da ação.
-
                 - **Custo da Estratégia** – Custo líquido por ação: `Prêmio ITM - Prêmio OTM`. Representa o valor investido por ação na montagem do spread.
-
                 - **# de Contratos** – Quantidade de contratos negociados (cada contrato geralmente representa 100 ações).
-
                 - **Custo Total** – Valor total investido na estratégia: `Custo da Estratégia × 100 × # de Contratos`.
-
                 - **Lucro Bruto ({moeda})** – Ganho bruto máximo possível: `Spread × 100 × # de Contratos`.
-
                 - **Preço de Venda ({moeda})** – Preço da ação no vencimento ou na simulação do fechamento da posição.
-
-                - **Lucro Líquido ({moeda})** – Resultado final da operação: `Lucro Bruto - Custo Total`. Pode variar conforme o preço de venda da ação no vencimento.
-
-                                        
+                - **Lucro Líquido ({moeda})** – Resultado final da operação: `Lucro Bruto - Custo Total`. Pode variar conforme o preço de venda da ação no vencimento.                                       
                         
             """.format(moeda = moeda, strike_compra = valor_strike_compra, strike_venda = valor_strike_venda,
                     premio_itm = valor_premio_itm, premio_otm = valor_premio_itm))

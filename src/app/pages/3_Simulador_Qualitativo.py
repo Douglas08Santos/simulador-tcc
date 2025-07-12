@@ -69,8 +69,7 @@ periodo = st.select_slider(
     value='2 anos' # Valor Inicial
 )
 
-aporte_inicial = st.number_input('Aporte Inicial', value=500, step=1000)
-aporte_mensal = st.number_input('Aporte Mensal', value=500, step=100)
+capital_inicial = st.number_input('Aporte Mensal', value=500, step=500)
 
 # Função de simulação
 @st.cache_data
@@ -89,8 +88,8 @@ def baixar_dados(tickers, periodo):
             raise ValueError("Erro ao procurar o ativo {}. Confira o nome ou substitua por outro.".format(ticker))
     return pd.DataFrame(data), moedas
 
-def simular_momentum(df, aporte_inicial, aporte_mensal):
-    saldo = aporte_inicial
+def simular_momentum(df, capital_inicial):
+    saldo = capital_inicial
     historico = []
 
     for i in range(2, len(df)):
@@ -98,8 +97,8 @@ def simular_momentum(df, aporte_inicial, aporte_mensal):
         top2 = retornos.sort_values(ascending=False).head(2).index.tolist()
 
         if i+1 < len(df):
-            saldo = aporte_inicial
-            investimento_total = saldo + aporte_mensal
+            saldo = capital_inicial
+            investimento_total = saldo
 
             saldo = 0
             saldo_venda = 0
@@ -144,7 +143,7 @@ if st.button('Simular Estratégia'):
 
                 if len(set(moedas)) == 1: # Significando que a unidade monetaria entre as empresass são as mesmas:
                     moeda = moedas[0]
-                    df_resultado = simular_momentum(df_precos, aporte_inicial, aporte_mensal)
+                    df_resultado = simular_momentum(df_precos, capital_inicial)
 
                     # Tabela de Alocações
                     st.subheader('Histórico de Alocações')
@@ -169,7 +168,7 @@ if st.button('Simular Estratégia'):
                     num_meses = df_resultado['Data'].nunique()
                     ativos_usados = df_resultado['Ativo'].nunique()
                     saldo_final_total = df_resultado['Saldo Final ({})'.format(moeda)].sum()
-                    aporte_total = aporte_inicial + (aporte_mensal * (num_meses - 1))
+                    aporte_total = capital_inicial * (num_meses - 1)
                     ganho_total = saldo_final_total - aporte_total
                     retorno_percentual = (ganho_total / aporte_total) * 100
 
@@ -178,8 +177,7 @@ if st.button('Simular Estratégia'):
 
                     st.markdown(f"""
                     **Parâmetros definidos:**
-                    - Aporte inicial: **{moeda} {aporte_inicial:,.2f}**
-                    - Aporte mensal: **{moeda} {aporte_mensal:,.2f}**
+                    - Capital inicial: **{moeda} {capital_inicial:,.2f}**
                     - Período analisado: **{periodo}**
                     - Ativos utilizados: **{ativos_usados}** ativos
                     - Alocações mensais realizadas: **{num_meses}** (**{num_meses*2}** alocações inviduais)
@@ -267,34 +265,21 @@ if st.button('Simular Estratégia'):
 
 
                     st.markdown("""
-                    ---
-                **Observação:**
+                                ---
+                            **Legenda da tabela:**
 
-                - **Data** – Data da operação de compra do ativo ou da simulação correspondente ao período analisado.
-
-                - **Ativo** – Código do ativo negociado (ex: PETR4.SA, ITUB4.SA).
-
-                - **Alocação ({moeda})** – Valor total disponível para investir naquele ativo naquele mês.
-
-                - **Preço de Compra ({moeda})** – Cotação da ação no momento da compra.
-
-                - **Investimento Real ({moeda})** – Valor efetivamente utilizado para comprar ações: `Preço de Compra × Quantidade`.
-
-                - **Quantidade** – Número de ações compradas com base no valor do investimento real.
-
-                - **Restante da Alocação ({moeda})** – Valor que sobrou da alocação original após a compra, geralmente por não ser possível comprar frações de ações.
-
-                - **Preço de Venda ({moeda})** – Cotação da ação no mês seguinte (simulação de saída).
-
-                - **Saldo Venda ({moeda})** – Valor obtido com a venda das ações: `Quantidade × Preço de Venda`.
-
-                - **Rendimento (em %)** – Variação percentual entre o preço de venda e o preço de compra: `((Preço de Venda - Preço de Compra)/ Preço de Compra × 100`.
-
-                - **Saldo Final ({moeda})** – Soma do saldo da venda com o valor restante da alocação: `Saldo Venda + Restante da Alocação`.
-
-                            
+                            - **Data** – Data da operação de compra do ativo ou da simulação correspondente ao período analisado.
+                            - **Ativo** – Código do ativo negociado (ex: PETR4.SA, ITUB4.SA).
+                            - **Alocação ({moeda})** – Valor total disponível para investir naquele ativo naquele mês.
+                            - **Preço de Compra ({moeda})** – Cotação da ação no momento da compra.
+                            - **Investimento Real ({moeda})** – Valor efetivamente utilizado para comprar ações: `Preço de Compra × Quantidade`.
+                            - **Quantidade** – Número de ações compradas com base no valor do investimento real.
+                            - **Restante da Alocação ({moeda})** – Valor que sobrou da alocação original após a compra, geralmente por não ser possível comprar frações de ações.
+                            - **Preço de Venda ({moeda})** – Cotação da ação no mês seguinte (simulação de saída).
+                            - **Saldo Venda ({moeda})** – Valor obtido com a venda das ações: `Quantidade × Preço de Venda`.
+                            - **Rendimento (em %)** – Variação percentual entre o preço de venda e o preço de compra: `((Preço de Venda - Preço de Compra)/ Preço de Compra × 100`.
+                            - **Saldo Final ({moeda})** – Soma do saldo da venda com o valor restante da alocação: `Saldo Venda + Restante da Alocação`.
                     """.format(moeda = moeda))
-
                 else:
                     raise ValueError("Unidades Monetárias diferentes: {}. Devem ser iguais.".format(moedas))
             except Exception as e:

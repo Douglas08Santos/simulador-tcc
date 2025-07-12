@@ -76,7 +76,7 @@ periodo = st.select_slider(
     value='2 anos' # Valor Inicial
 )
 
-capital_inicial = st.number_input("Capital Inicial", min_value=500, value=500, step=500)
+capital_inicial = st.number_input("Aporte Mensal", min_value=500, value=500, step=500)
 
 # Simulação
 if st.button("Simular Estratégia"):
@@ -163,22 +163,14 @@ if st.button("Simular Estratégia"):
 
             st.markdown("""
                 ---
-                **Observação:**
-
+                **Legenda da tabela:**
                 - **Data** – Data em que a operação (compra ou venda) foi realizada.
-
                 - **Operação** – Tipo de operação executada: geralmente **Compra** ou **Venda**.
-
                 - **Preço (BRL)** – Cotação da ação no momento da operação.
-
                 - **Quantidade de Ações** – Número de ações compradas ou vendidas na operação.
-
                 - **Capital Atual (BRL)** – Valor total acumulado após a operação, considerando o capital disponível ou o saldo resultante.
 
                 """.format(moeda = moeda))
-
-            
-
         except Exception as e:
             st.error(f"Erro ao executar simulação: {e}")
 else:

@@ -2,62 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import matplotlib.pyplot as plt
-from datetime import datetime
 
-st.set_page_config(page_title='Simulador Opções', layout='centered')
-st.title('Simulador - Estratégia com Opções: Protective Put')
-
-st.markdown('''
-Esta simulação demonstra a estratégia **Protective Put**, onde o investidor compra ações e simultaneamente compra uma opção de venda (put) como forma de proteção.
-
-**Premissas:**
-- Aporte mensal constante em ações
-- Compra de puts com vencimento de 30 dias
-            
-**Personalizações disponíveis:**
-- Escolha de ativo (ticker)
-- Aporte mensal
-- Período de simulação
-- Porcentagem do Strike da put (5% abaixo do preço da ação por padrão)
-- Porcentagem do prêmio da put (2% do valor da ação por padrão)
-''')
-
-# Entradas do usuário
-ticker = st.text_input('Ticker da Ação (ex: PETR4.SA, VALE3.SA, AAPL)', value='PETR4.SA')
-
-# Lista de périodo predefinidas
-opcao = ['6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']
-legenda = ['6 meses', '2 anos', '5 anos', '10 anos', 'máximo']
-opcoes_dic = dict(zip(legenda, opcao))
-
-# Criando o select_slider
-periodo = st.select_slider(
-    'Selecione o período, dos últimos:',
-    options=opcoes_dic.keys(),
-    value='2 anos' # Valor Inicial
-)
-
-aporte_mensal = st.number_input('Aporte Mensal', value=500, step=50)
-
-# Criando o select_slider para o strike
-strikes = list(range(1, 11))
-legenda_strike = [str(i) for i in range(1, 11)]
-strikes_dic = dict(zip(legenda_strike, strikes))
-valor_strike = st.select_slider(
-    'Selecione a porcentagem (%) do strike:',
-    options=legenda_strike,
-    value='5' # Valor Inicial
-)
-
-# Criando o select_slider para o strike
-premios = list(range(1, 11))
-legenda_premio = [str(i) for i in range(1, 11)]
-premio_dic = dict(zip(legenda_premio, premios))
-valor_premio = st.select_slider(
-    'Selecione a porcentagem (%) do prêmio:',
-    options=legenda_strike,
-    value='2' # Valor Inicial
-)
 
 # Simulação da estratégia Protective Put
 def protective_put(df, aporte_mensal, moeda):
@@ -96,6 +41,65 @@ def baixar_dados(ticker):
         raise ValueError("Erro ao procurar o ativo {}. Confira o nome ou substitua por outro.".format(ticker))
     
     return dados
+
+
+# --- Streamlit
+st.set_page_config(page_title='Simulador Opções', layout='centered')
+st.title('Simulador - Estratégia com Opções: Protective Put')
+
+st.markdown('''
+Esta simulação demonstra a estratégia **Protective Put**, onde o investidor compra ações e simultaneamente compra uma opção de venda (put) como forma de proteção.
+
+**Premissas:**
+- Aporte mensal constante em ações
+- Compra de puts com vencimento de 30 dias
+            
+**Personalizações disponíveis:**
+- Escolha de ativo (ticker)
+- Aporte mensal
+- Período de simulação
+- Porcentagem do Strike da put (5% abaixo do preço da ação por padrão)
+- Porcentagem do prêmio da put (2% do valor da ação por padrão)
+''')
+
+# Entradas do usuário
+ticker = st.text_input('Ticker da Ação (ex: PETR4.SA, VALE3.SA, AAPL)', value='PETR4.SA')
+
+# Lista de périodo predefinidas
+opcao = ['6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']
+legenda = ['6 meses', '2 anos', '5 anos', '10 anos', 'máximo']
+opcoes_dic = dict(zip(legenda, opcao))
+
+# Criando o select_slider
+periodo = st.select_slider(
+    'Selecione o período, dos últimos:',
+    options=opcoes_dic.keys(),
+    value='2 anos' # Valor Inicial
+)
+
+aporte_mensal = st.number_input('Aporte Mensal', value=500, step=500)
+
+# Criando o select_slider para o strike
+strikes = list(range(1, 11))
+legenda_strike = [str(i) for i in range(1, 11)]
+strikes_dic = dict(zip(legenda_strike, strikes))
+valor_strike = st.select_slider(
+    'Selecione a porcentagem (%) do strike:',
+    options=legenda_strike,
+    value='5' # Valor Inicial
+)
+
+# Criando o select_slider para o strike
+premios = list(range(1, 11))
+legenda_premio = [str(i) for i in range(1, 11)]
+premio_dic = dict(zip(legenda_premio, premios))
+valor_premio = st.select_slider(
+    'Selecione a porcentagem (%) do prêmio:',
+    options=legenda_strike,
+    value='2' # Valor Inicial
+)
+
+
 
 # Execução da simulação
 if st.button('Simular Estratégia'):
@@ -216,29 +220,17 @@ if st.button('Simular Estratégia'):
 
             st.markdown("""
                 ---
-                **Observação:**
-
+                 **Legenda da tabela:**
                 - **Preço de Compra ({moeda})** – Valor pago por ação
-
                 - **Strike de {valor_strike}%** – Valor do strike da opção put reduzido em {valor_strike}%, representando o valor mínimo de cobertura.
-
                 - **Prêmio de {valor_premio}%** – Valor de pago pela opção put por ação ({valor_premio}% do preço de compra).
-
                 - **# de Ações** – Número total de ações compradas na operação.
-
                 - **Custo das Ações** – Preço total pago pelas ações: `Preço de Compra × # de Ações`.
-
                 - **Custo da Put** – Custo total com proteção: `Prêmio × # de Ações`.
-
                 - **Custo Total** – Soma dos custos com ações e proteção (puts): `Custo Ações + Custo Put`.
-
                 - **Preço de Venda ({moeda})** – Preço da ação no mês seguinte (simulação de venda no futuro).
-
                 - **Valor Final ({moeda})** – Valor total obtido com a venda das ações: `Preço de Venda × # de Ações`.
-
                 - **Lucro Líquido ({moeda})** – Resultado da operação: `Valor Final - Custo Total`.
-                            
-                        
                 """.format(moeda = moeda, valor_strike = valor_strike, valor_premio = valor_premio))
 
            
